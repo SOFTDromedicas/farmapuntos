@@ -2,6 +2,7 @@ package com.dromedicas.mailservices;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
@@ -9,6 +10,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.mail.Address;
 import javax.mail.Flags;
 import javax.mail.Folder;
 import javax.mail.FolderNotFoundException;
@@ -21,11 +23,11 @@ import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.Transport;
-import javax.mail.search.FlagTerm;
+import javax.mail.internet.*;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.sun.mail.imap.IMAPNestedMessage;
 
 
 
@@ -64,6 +66,7 @@ public class JavaMailService {
 	private static final String MIME_TYPE_RFC_822 = "message/rfc822"; 
 	private static final String MIME_TYPE_TEXTPLAIN = "text/plain"; 
 	private static final String MIME_TYPE_MULTIPAR_REPORT = "multipart/REPORT"; 
+
 	
     
 	public JavaMailService() {
@@ -71,7 +74,7 @@ public class JavaMailService {
 		this.config = new Properties();
 		try {
 			//esto se debe manejar a nivel de base de datos
-			FileInputStream entrada = new FileInputStream( "C:/FarmapuntosEmail/emailconexion0.properties" );
+			FileInputStream entrada = new FileInputStream( "C:/FarmapuntosEmail/emailconexion.properties" );
 			this.config.load(entrada); 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -133,6 +136,7 @@ public class JavaMailService {
 			store = session.getStore();
 			//store.connect(serverHost, port, username, password);
 			store.connect(this.serverSMTPHost, this.username, this.password);
+			
 		}
 		return store;
 	}
@@ -181,12 +185,12 @@ public class JavaMailService {
 			}			
 		}
 		List<Message> result = Lists.newArrayList();
-//		result = Arrays.asList(mailInbox.getMessages()) ;
-		final Message[] unreadMessages = mailInbox.search(new FlagTerm(
-				new Flags(Flags.Flag.SEEN), false));
-		if (null != unreadMessages && unreadMessages.length > 0) {
-			result = ImmutableList.copyOf(unreadMessages);			
-		}
+		result = Arrays.asList(mailInbox.getMessages()) ;
+//		final Message[] unreadMessages = mailInbox.search(new FlagTerm(
+//				new Flags(Flags.Flag.SEEN), false));
+//		if (null != unreadMessages && unreadMessages.length > 0) {
+//			result = ImmutableList.copyOf(unreadMessages);			
+//		}
 		return result;
 	}
 	
@@ -197,7 +201,7 @@ public class JavaMailService {
 	
 	
 	public String readNewEmail(Part p) throws MessagingException, IOException{
-		return p instanceof Message ? readMessage((Message) p)
+		return p instanceof Message ? getEmailFailed((Message) p)
 				: findNonMimeMessageCertId(p);
 	}
 	
@@ -230,9 +234,13 @@ public class JavaMailService {
 				Object object = (Object) e.nextElement();
 				Header h = (Header) object;		
 				//this is a constant into all head messages
-				//System.out.println("-----------" + h.getName() +": "+ h.getValue());
-				if (h.getName().equals("X-Failed-Recipients"))
+				System.out.println("--------" + h.getName() +"--: "+h.getValue() );
+				if (h.getName().equals("X-Failed-Recipients")  ){
 					address = h.getValue();
+					System.out.println("ID MESSAGE: " +  h.getValue());
+				}
+					
+				
 			}
 		return address;
 	}
@@ -242,15 +250,19 @@ public class JavaMailService {
 	 * @param mensaje
 	 * @return
 	 */
-	private String readMessage(Message mensaje){
+	public String getEmailFailed(Message mensaje){
 		String addres = null;
 		try {
 			Enumeration headers  = mensaje.getAllHeaders();		
 			if( isFailed(mensaje.getAllHeaders()) ){				
 				if (mensaje.isMimeType(MIME_TYPE_TEXTPLAIN)) {					
 					addres = this.getRecipientsTo(mensaje.getAllHeaders());
+					
+					
+					
 				} else if (mensaje.isMimeType(MIME_TYPE_MULTIPART)) {					
 					addres = this.getRecipientsTo(headers);
+					
 				} else if (mensaje.isMimeType(MIME_TYPE_RFC_822)) {					
 					addres = this.getRecipientsTo(headers);
 				}
@@ -260,6 +272,28 @@ public class JavaMailService {
 		}
 		return addres;
 	}
+	
+	
+	public String messageIDFailed(Message mensaje) throws IOException, MessagingException{
+		String messageId = null;
+		Multipart mp = (Multipart) mensaje.getContent();	            	
+    	for(int i= 0 ;  i < mp.getCount(); i++){
+    		Part p = mp.getBodyPart(i);	  
+    		if(p.isMimeType(MIME_TYPE_RFC_822)){ 
+    			Part p2 = (Part) p.getContent();
+    			Enumeration head =  p2.getAllHeaders();    			
+    			while (head.hasMoreElements()) {
+    				Object object = (Object) head.nextElement();
+    				Header h = (Header) object;		
+    				if (h.getName().equals("Message-ID")  ){
+    					messageId = h.getValue();
+    				}
+    			}
+    		} 
+    	}
+		return messageId;
+	}
+	
 	
 	/**
 	 * Copia la coleccion de mensajes dados a la carptea especificada dentros

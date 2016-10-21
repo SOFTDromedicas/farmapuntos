@@ -12,36 +12,44 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
-public class BuilderMessage {
-
-	private MimeMessage message;  
-	  
-    private String subject;  
+public class CustomMimeMessage extends MimeMessage {
+	
+	private String destino;
+	private String origen;
+	private String subject;  
     private String text;  
     private FileDataSource attachment;  
-    private String from;  
     private String multipleRecipients[]; 
-    private String recipient; 
+    private String uniqueMessageId;
+
     
     private static final String MESSAGE_TEXT_CONTENT_PARAMS = "text/plain; charset=UTF-8";
     private static final String MESSAGE_HTML_CONTENT_PARAMS = "text/html; charset=utf-8";
     
-    public BuilderMessage(Session session){
-    	this.setMessage(new MimeMessage(session));
-    }
-    
+	public CustomMimeMessage(Session session , String uniqueMessageId) {
+		super(session);
+		this.uniqueMessageId = uniqueMessageId;
+		// TODO Auto-generated constructor stub
+	}
+	
 	public MimeMessage buildText(String type) throws MessagingException {  
-		System.out.println(new InternetAddress(this.getFrom()).getAddress());
-        message.setFrom(new InternetAddress(this.getFrom()));  
-        message.setRecipients(Message.RecipientType.TO,  
-                InternetAddress.parse(this.getRecipient()));  
+		
+        super.setFrom(new InternetAddress(this.getOrigen()));  
+        super.setRecipients(Message.RecipientType.TO,  
+                InternetAddress.parse(this.getDestino()));  
         String subject = this.subject.replace('\n', ' ');  
-        message.setSubject(subject);     
-        message.setHeader("X-Failed-Recipients", "<123@tockenfinal>");
-        message.setContent(createBodyPart(type));  
-        return message;  
+        super.setSubject(subject);
+        this.updateHeaders();
+        super.setContent(createBodyPart(type));  
+        return this;  
     }  
 
+	
+	protected void updateMessageID() throws MessagingException {
+        setHeader("Message-ID", "<" + uniqueMessageId + ">");
+    }
+	
+	
     private Multipart createBodyPart(String type) throws MessagingException {  
         Multipart multipart = new MimeMultipart();  
         if("HTML".equals(type)){        	
@@ -80,12 +88,20 @@ public class BuilderMessage {
 
     }
 
-	public Message getMessage() {
-		return message;
+	public String getDestino() {
+		return destino;
 	}
 
-	public void setMessage(MimeMessage message) {
-		this.message = message;
+	public void setDestino(String destino) {
+		this.destino = destino;
+	}
+
+	public String getOrigen() {
+		return origen;
+	}
+
+	public void setOrigen(String origen) {
+		this.origen = origen;
 	}
 
 	public String getSubject() {
@@ -112,14 +128,6 @@ public class BuilderMessage {
 		this.attachment = attachment;
 	}
 
-	public String getFrom() {
-		return from;
-	}
-
-	public void setFrom(String from) {
-		this.from = from;
-	}
-
 	public String[] getMultipleRecipients() {
 		return multipleRecipients;
 	}
@@ -128,16 +136,8 @@ public class BuilderMessage {
 		this.multipleRecipients = multipleRecipients;
 	}
 
-	public String getRecipient() {
-		return recipient;
-	}
-
-	public void setRecipient(String recipient) {
-		this.recipient = recipient;
-	}
-
-	
-	
-
     
+    
+    
+
 }
