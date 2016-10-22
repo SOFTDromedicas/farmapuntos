@@ -65,26 +65,45 @@ public class Test {
 			
 			List<Message> inboxM = service.getNewMessages();//Mensajes recibidos			
 			ArrayList<Message> archivo = new ArrayList<Message>();//coleccion de mensajes errados
+			
 			System.out.println("tamanio:" + inboxM.size());
 			
 			
-			String address = service.readNewEmail(inboxM.get(inboxM.size()-1));
-			String id =  service.messageIDFailed(inboxM.get(inboxM.size()-1));
-			System.out.println("Email Fallido>>>\t"+address);
-			System.out.println("Email ID>>>\t"+id);
-			/*
-			for(Message m: inboxM){				
-    			String address = service.readNewEmail(m);				
-				if( address != null ){
-					//cuando un mensaje es fallido se debe anadir este mensaje a una nueva coleccion
-					//para luego ser copiado en una carpeta de leidos y se debe eliminar
-					archivo.add(m);
-					service.copiarMensajes(service.getMailInbox(), service.getAchivedFolder(), 
-											archivo.toArray(new Message[0]) );
-					service.deleteMessage(m);
-					System.out.println("Email Fallido>>>\t"+address);
+			String emailAddres = null;
+			String messageId = null;
+			
+//			System.out.println(service.isFailedMessage(inboxM.get(inboxM.size()-1)));
+//			emailAddres = service.getEmailFailed(inboxM.get(inboxM.size()-1));			
+//			messageId = service.messageId(inboxM.get(inboxM.size()-1));
+//			System.out.println("Email Fallido>>>\t"+emailAddres+" Tocken>>>\t" + messageId);
+			
+			
+			
+			
+			for(int i = 1980; i < inboxM.size(); i++ ){		
+				//metodo perdicado que determina si el mensaje es fallido
+				Message m = inboxM.get(i);
+				System.out.println( i+ "-) "+service.isFailedMessage(m));
+				if(service.isFailedMessage(m)){					
+					//metodo que devuelve la direccion email
+					emailAddres = service.getEmailFailed(m);
+					//metodo que devuelve el message-id
+					messageId = service.messageId(m);
+					//añado el mensaje a la coleecion de leidos
+					
+					//archivo.add(m);
+					
+					//copio el mensaje a la carperta de leidos
+					
+//					service.copiarMensajes(service.getMailInbox(), service.getAchivedFolder(), 
+//							archivo.toArray(new Message[0]) );
+					//borro del inbox el mensaje actual
+					
+//					service.deleteMessage(m);
+					System.out.println("Email Fallido>>>\t"+emailAddres+" Tocken>>>\t" + messageId);
 				}
-			}*/
+			}
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

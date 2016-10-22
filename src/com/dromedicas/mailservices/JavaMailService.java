@@ -2,6 +2,7 @@ package com.dromedicas.mailservices;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -10,7 +11,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.mail.Address;
 import javax.mail.Flags;
 import javax.mail.Folder;
 import javax.mail.FolderNotFoundException;
@@ -23,11 +23,9 @@ import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.Transport;
-import javax.mail.internet.*;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.sun.mail.imap.IMAPNestedMessage;
 
 
 
@@ -74,7 +72,7 @@ public class JavaMailService {
 		this.config = new Properties();
 		try {
 			//esto se debe manejar a nivel de base de datos
-			FileInputStream entrada = new FileInputStream( "C:/FarmapuntosEmail/emailconexion.properties" );
+			FileInputStream entrada = new FileInputStream( "C:/FarmapuntosEmail/emailconexion2.properties" );
 			this.config.load(entrada); 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -205,6 +203,12 @@ public class JavaMailService {
 				: findNonMimeMessageCertId(p);
 	}
 	
+	
+	public boolean isFailedMessage(Message mensaje) throws MessagingException{
+		boolean b = isFailed(mensaje.getAllHeaders());
+		return b;		
+	}
+	
 	/**
 	 * Determina si un correo es fallido en su entrega por medio de su cabecera
 	 * @param e <code>Enumeration</code> Cabecero del mensaje
@@ -214,14 +218,15 @@ public class JavaMailService {
 		  boolean isFailed = false;
 		  while (e.hasMoreElements()) {
 				Object object = (Object) e.nextElement();
-				Header h = (Header) object;						
+				Header h = (Header) object;			
+				
 				if (h.getName().equals("X-Failed-Recipients"))
 					isFailed = true;
 			}
 		  return isFailed;
 	}
 	
-	/**
+	/**--------------------------------
 	 * Devuelve el destinatario de correo fallido.
 	 * Recibe como parametro un objeto <code>Enumeration</code> que
 	 * contiene todo el cabecero del mensaje.
@@ -230,18 +235,19 @@ public class JavaMailService {
 	 */
 	private String getRecipientsTo(Enumeration e){
 		String address = null;
+		
 		  while (e.hasMoreElements()) {
 				Object object = (Object) e.nextElement();
 				Header h = (Header) object;		
 				//this is a constant into all head messages
 				System.out.println("--------" + h.getName() +"--: "+h.getValue() );
-				if (h.getName().equals("X-Failed-Recipients")  ){
-					address = h.getValue();
-					System.out.println("ID MESSAGE: " +  h.getValue());
-				}
+				if (h.getName().equals("X-Failed-Recipients")  ){					
+					address = h.getValue();	
 					
-				
+				}	
 			}
+		  
+		 
 		return address;
 	}
 	
@@ -252,21 +258,14 @@ public class JavaMailService {
 	 */
 	public String getEmailFailed(Message mensaje){
 		String addres = null;
-		try {
-			Enumeration headers  = mensaje.getAllHeaders();		
-			if( isFailed(mensaje.getAllHeaders()) ){				
-				if (mensaje.isMimeType(MIME_TYPE_TEXTPLAIN)) {					
-					addres = this.getRecipientsTo(mensaje.getAllHeaders());
-					
-					
-					
-				} else if (mensaje.isMimeType(MIME_TYPE_MULTIPART)) {					
-					addres = this.getRecipientsTo(headers);
-					
-				} else if (mensaje.isMimeType(MIME_TYPE_RFC_822)) {					
-					addres = this.getRecipientsTo(headers);
-				}
-			}//end if isFailed
+		try {				
+			if (mensaje.isMimeType(MIME_TYPE_TEXTPLAIN)) {
+				addres = this.getRecipientsTo(mensaje.getAllHeaders());
+			} else if (mensaje.isMimeType(MIME_TYPE_MULTIPART)) {
+				addres = this.getRecipientsTo(mensaje.getAllHeaders());
+			} else if (mensaje.isMimeType(MIME_TYPE_RFC_822)) {
+				addres = this.getRecipientsTo(mensaje.getAllHeaders());
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -274,24 +273,54 @@ public class JavaMailService {
 	}
 	
 	
-	public String messageIDFailed(Message mensaje) throws IOException, MessagingException{
+	
+	public String messageId(Message mensaje){
+		String tocken = null;
+		try {				
+			if (mensaje.isMimeType(MIME_TYPE_TEXTPLAIN)) {
+				tocken = this.messageIDFailedTextPlain(mensaje);
+			} else if (mensaje.isMimeType(MIME_TYPE_MULTIPART)) {
+				tocken = this.messageIDFailedMultipar(mensaje);
+			} 
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return tocken;
+	}
+	
+	
+	
+	public String messageIDFailedMultipar(Message mensaje) throws IOException, MessagingException{
 		String messageId = null;
 		Multipart mp = (Multipart) mensaje.getContent();	            	
-    	for(int i= 0 ;  i < mp.getCount(); i++){
-    		Part p = mp.getBodyPart(i);	  
-    		if(p.isMimeType(MIME_TYPE_RFC_822)){ 
-    			Part p2 = (Part) p.getContent();
-    			Enumeration head =  p2.getAllHeaders();    			
-    			while (head.hasMoreElements()) {
-    				Object object = (Object) head.nextElement();
-    				Header h = (Header) object;		
-    				if (h.getName().equals("Message-ID")  ){
-    					messageId = h.getValue();
-    				}
-    			}
-    		} 
+		for (int i = 0; i < mp.getCount(); i++) {
+			Part p = mp.getBodyPart(i);
+			if (p.isMimeType(MIME_TYPE_RFC_822)) {
+				Part p2 = (Part) p.getContent();
+				Enumeration head = p2.getAllHeaders();
+				while (head.hasMoreElements()) {
+					Object object = (Object) head.nextElement();
+					Header h = (Header) object;
+					if (h.getName().equals("Message-ID")) {
+						messageId = h.getValue();
+					}
+				}
+			}
     	}
 		return messageId;
+	}
+	
+	
+	public String messageIDFailedTextPlain(Message mensaje) throws IOException, MessagingException{
+		String tocken = null;
+		String contenido = (String) mensaje.getContent();
+		String[] lines = contenido.split(System.getProperty("line.separator"));
+		for (String l : lines) {
+			if (l.contains("Message-ID:")) {
+				tocken = l.substring(12, l.length());
+			}
+		}
+		return tocken;
 	}
 	
 	
