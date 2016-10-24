@@ -34,6 +34,7 @@ public class Test {
 		JavaMailService  service = new JavaMailService();
 		//Clase generica para componeer email
 		CustomMimeMessage message;
+		String messageId = "124102016";
 		
 		try {
 			//Html personalizado para el mensaje
@@ -42,10 +43,10 @@ public class Test {
 			Document doc = Jsoup.parse(inputHtml, "UTF-8");
 			
 			//Parametros del mensaje
-			message = new CustomMimeMessage(service.createUserMailSession(), "210102016123456@farmapuntos.net");
+			message = new CustomMimeMessage(service.createUserMailSession(), messageId+"@"+service.getServerSMTPHost() );
 			message.setOrigen("pruebassistemas@dromedicas.com.co");
 			message.setText(doc.html());
-			message.setDestino("testtest@hotmail.com");
+			message.setDestino("otrotestdir@gmail.com");
 			message.setSubject("Mensaje Farmapuntos");	
 			
 			//envio del mensajse			
@@ -80,26 +81,22 @@ public class Test {
 			
 			
 			
-			for(int i = 1980; i < inboxM.size(); i++ ){		
+			for(Message m: inboxM ){		
 				//metodo perdicado que determina si el mensaje es fallido
-				Message m = inboxM.get(i);
-				System.out.println( i+ "-) "+service.isFailedMessage(m));
 				if(service.isFailedMessage(m)){					
 					//metodo que devuelve la direccion email
 					emailAddres = service.getEmailFailed(m);
 					//metodo que devuelve el message-id
 					messageId = service.messageId(m);
-					//añado el mensaje a la coleecion de leidos
+					//añado el mensaje a la coleecion de leidos					
+					archivo.add(m);
 					
-					//archivo.add(m);
-					
-					//copio el mensaje a la carperta de leidos
-					
-//					service.copiarMensajes(service.getMailInbox(), service.getAchivedFolder(), 
-//							archivo.toArray(new Message[0]) );
+					//copio el mensaje a la carperta de leidos					
+					service.copiarMensajes(service.getMailInbox(), service.getAchivedFolder(), 
+							archivo.toArray(new Message[0]) );
 					//borro del inbox el mensaje actual
 					
-//					service.deleteMessage(m);
+					service.deleteMessage(m);
 					System.out.println("Email Fallido>>>\t"+emailAddres+" Tocken>>>\t" + messageId);
 				}
 			}

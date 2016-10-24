@@ -2,8 +2,6 @@ package com.dromedicas.mailservices;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
@@ -23,8 +21,10 @@ import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.Transport;
+import javax.mail.search.FlagTerm;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 
@@ -65,8 +65,7 @@ public class JavaMailService {
 	private static final String MIME_TYPE_TEXTPLAIN = "text/plain"; 
 	private static final String MIME_TYPE_MULTIPAR_REPORT = "multipart/REPORT"; 
 
-	
-    
+	    
 	public JavaMailService() {
 		System.out.println("Leyendo propiedades");
 		this.config = new Properties();
@@ -183,12 +182,12 @@ public class JavaMailService {
 			}			
 		}
 		List<Message> result = Lists.newArrayList();
-		result = Arrays.asList(mailInbox.getMessages()) ;
-//		final Message[] unreadMessages = mailInbox.search(new FlagTerm(
-//				new Flags(Flags.Flag.SEEN), false));
-//		if (null != unreadMessages && unreadMessages.length > 0) {
-//			result = ImmutableList.copyOf(unreadMessages);			
-//		}
+//		Oresult = Arrays.asList(mailInbox.getMessages()) ;
+		final Message[] unreadMessages = mailInbox.search(new FlagTerm(
+				new Flags(Flags.Flag.SEEN), false));
+		if (null != unreadMessages && unreadMessages.length > 0) {
+			result = ImmutableList.copyOf(unreadMessages);			
+		}
 		return result;
 	}
 	
@@ -216,17 +215,15 @@ public class JavaMailService {
 	 */
 	public boolean isFailed(Enumeration e) {
 		  boolean isFailed = false;
-		  while (e.hasMoreElements()) {
-				Object object = (Object) e.nextElement();
-				Header h = (Header) object;			
-				
+		  while (e.hasMoreElements()) {				
+				Header h = (Header) e.nextElement();	
 				if (h.getName().equals("X-Failed-Recipients"))
 					isFailed = true;
 			}
 		  return isFailed;
 	}
 	
-	/**--------------------------------
+	/**
 	 * Devuelve el destinatario de correo fallido.
 	 * Recibe como parametro un objeto <code>Enumeration</code> que
 	 * contiene todo el cabecero del mensaje.
@@ -234,20 +231,16 @@ public class JavaMailService {
 	 * @return <code>String</code> Direccion fallida
 	 */
 	private String getRecipientsTo(Enumeration e){
-		String address = null;
-		
+		String address = null;		
 		  while (e.hasMoreElements()) {
-				Object object = (Object) e.nextElement();
-				Header h = (Header) object;		
+				Header h = (Header) e.nextElement();
 				//this is a constant into all head messages
-				System.out.println("--------" + h.getName() +"--: "+h.getValue() );
+				System.out.println(">-----" + h.getName() +": "+h.getValue() );
 				if (h.getName().equals("X-Failed-Recipients")  ){					
 					address = h.getValue();	
 					
 				}	
 			}
-		  
-		 
 		return address;
 	}
 	
@@ -384,8 +377,7 @@ public class JavaMailService {
 		if(subjectCertificate == null)
 			return subject;
 		else
-			return subjectCertificate;		
-	
+			return subjectCertificate;			
 	}
 	
 	
@@ -432,6 +424,14 @@ public class JavaMailService {
 
 	public void setAchivedFolder(Folder achivedFolder) {
 		this.achivedFolder = achivedFolder;
+	}
+	
+	
+	/**
+	 * @return the serverSMTPHost
+	 */
+	public String getServerSMTPHost() {
+		return serverSMTPHost;
 	}
 
 	// Metodo para imprimir las propiedades del archvio de configuracion
